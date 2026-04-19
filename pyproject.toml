@@ -1,25 +1,17 @@
 [project]
-name = "commonapi"
-version = "0.1.0"
+name = "commonapi-workspace"
+version = "0.0.0"
+description = "Workspace root for yourco-observability, yourco-fastapi, and example services."
 requires-python = ">=3.12"
-dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
-    "pydantic-settings>=2.6.0",
-]
 
-[project.optional-dependencies]
+[tool.uv.workspace]
+members = ["libs/*", "examples/*"]
+
+[dependency-groups]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.24.0",
-    "httpx>=0.28.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 100
@@ -36,4 +28,3 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
