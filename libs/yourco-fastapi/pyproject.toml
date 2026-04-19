@@ -1,0 +1,26 @@
+[project]
+name = "yourco-fastapi"
+version = "0.1.0"
+description = "FastAPI toolkit functions for yourco services."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "yourco-observability",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yourco_fastapi"]
+
+[tool.uv.sources]
+yourco-observability = { workspace = true }
