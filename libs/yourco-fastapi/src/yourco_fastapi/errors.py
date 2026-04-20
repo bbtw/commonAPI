@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from http import HTTPStatus
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from yourco_observability import Logger, current_context
 
 DEFAULT_TYPE_URL_PREFIX = "https://errors.yourco.internal/"
@@ -126,6 +128,30 @@ def apply_standard_errors(
     *,
     type_url_prefix: str = DEFAULT_TYPE_URL_PREFIX,
 ) -> None:
+    @app.exception_handler(StarletteHTTPException)
+    async def _handle_http_exception(
+        request: Request, exc: StarletteHTTPException
+    ) -> JSONResponse:
+        try:
+            status = HTTPStatus(exc.status_code)
+            title = status.phrase
+            code = status.name.lower()
+        except ValueError:
+            title = "HTTP Error"
+            code = f"http_{exc.status_code}"
+        payload = _envelope_from(
+            type_url=f"{type_url_prefix}{code}",
+            title=title,
+            status=exc.status_code,
+            detail=str(exc.detail) if exc.detail is not None else None,
+            instance=request.url.path,
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=payload,
+            headers=exc.headers,
+        )
+
     @app.exception_handler(AppError)
     async def _handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         payload = _envelope_from(

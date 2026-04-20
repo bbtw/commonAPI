@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 from yourco_fastapi import (
@@ -51,6 +51,14 @@ def _make_app(logger: Logger) -> FastAPI:
     @app.post("/validate")
     async def validate(item: _Item) -> dict[str, str]:
         return {"name": item.name}
+
+    @app.get("/manual-http")
+    async def manual_http() -> None:
+        raise HTTPException(status_code=403, detail="not for you")
+
+    @app.get("/teapot")
+    async def teapot() -> None:
+        raise HTTPException(status_code=418, detail="short and stout")
 
     return app
 
@@ -169,6 +177,43 @@ def test_custom_type_url_prefix_honored() -> None:
     response = TestClient(app, raise_server_exceptions=False).get("/x")
 
     assert response.json()["type"] == "https://example.com/errors/not_found"
+
+
+def test_unmatched_route_returns_envelope() -> None:
+    client, _ = _client()
+
+    response = client.get("/nonexistent")
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["status"] == 404
+    assert body["title"] == "Not Found"
+    assert body["type"].endswith("/not_found")
+    assert body["errors"] == []
+    assert body["instance"] == "/nonexistent"
+
+
+def test_manual_http_exception_returns_envelope() -> None:
+    client, _ = _client()
+
+    response = client.get("/manual-http")
+
+    assert response.status_code == 403
+    body = response.json()
+    assert body["title"] == "Forbidden"
+    assert body["detail"] == "not for you"
+    assert body["type"].endswith("/forbidden")
+
+
+def test_unknown_status_falls_back_to_generic_code() -> None:
+    client, _ = _client()
+
+    response = client.get("/teapot")
+
+    assert response.status_code == 418
+    body = response.json()
+    assert body["title"] == "I'm a Teapot"
+    assert body["type"].endswith("/im_a_teapot")
 
 
 def test_custom_type_url_on_instance_overrides_prefix() -> None:
